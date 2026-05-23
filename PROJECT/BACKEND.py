@@ -12,7 +12,7 @@ if os.path.exists(css_path):
         with open(css_path, "r", encoding="utf-8") as f:
             css_content = f.read()
             if css_content.strip():  # Verify file is not empty
-                #st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+                st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
     except Exception as e:
         st.error(f"Error loading styles: {e}")
 else:
