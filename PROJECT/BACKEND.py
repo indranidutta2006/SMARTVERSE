@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import random
-import os
+from datetime import datetime
 from transformers import pipeline
 
 # --- PAGE CONFIG ---
@@ -12,85 +12,85 @@ st.set_page_config(page_title="Sentience AI", layout="wide")
 def load_sentience_engine():
     class ContextualBot:
         def __init__(self):
-            # Using only the emotion classifier to avoid the summarization KeyError
-            # This model is very stable and handles 'text-classification'
-            self.classifier = pipeline(
-                "text-classification", 
-                model="SamLowe/roberta-base-go_emotions", 
-                top_k=1
-            )
-
+            self.classifier = pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", top_k=1)
+        
         def extract_topic(self, history):
-            """Simple extraction logic to find the 'context' without a heavy model"""
-            if len(history) < 2:
-                return "our conversation"
-            
-            # Look at the last user message
+            if len(history) < 2: return "our conversation"
             last_user_msg = history[-1]["content"] if history[-1]["role"] == "user" else ""
-            
-            # List of common filler words to ignore
-            stop_words = ["i", "am", "feel", "the", "a", "is", "to", "it", "my", "was"]
-            words = [w for w in last_user_msg.lower().split() if w not in stop_words]
-            
-            # Return the last 3 meaningful words as the 'topic'
-            if words:
-                return f"'{ ' '.join(words[-3:]) }'"
-            return "what you shared"
+            words = [w for w in last_user_msg.lower().split() if len(w) > 3]
+            return f"'{ ' '.join(words[-2:]) }'" if words else "what you shared"
 
         def generate_contextual_reply(self, current_input, history):
-            # 1. Detect Emotion
             emotion_data = self.classifier(current_input)[0][0]
             emotion = emotion_data['label']
-            
-            # 2. Get Contextual Topic from History
             topic = self.extract_topic(history)
-
-            # 3. Empathetic Branching
-            if emotion in ['sadness', 'disappointment', 'grief', 'remorse']:
-                reply = f"I'm truly sorry you're dealing with {topic}. It's understandable that this brings up feelings of {emotion}. I'm here to listen if you want to say more."
-            elif emotion in ['joy', 'excitement', 'approval', 'pride']:
-                reply = f"That sounds wonderful! Hearing about {topic} clearly brings you {emotion}. I'm happy for you—what's the best part about it?"
-            elif emotion in ['anger', 'annoyance', 'frustration']:
-                reply = f"I can hear how much {topic} is frustrating you. It's completely valid to feel {emotion} in this situation. What feels the most unfair right now?"
-            elif emotion in ['fear', 'nervousness', 'anxiety']:
-                reply = f"It sounds like {topic} is causing some anxiety. Take a deep breath. It's okay to feel {emotion} when things are uncertain."
-            else:
-                reply = f"I'm following what you're saying about {topic}. It sounds like a lot to process. How are you feeling about it all now?"
-
+            
+            replies = {
+                'sadness': f"I'm truly sorry about {topic}. It's understandable to feel {emotion}.",
+                'joy': f"That sounds wonderful! {topic.capitalize()} clearly brings you {emotion}.",
+                'anger': f"I can hear the frustration regarding {topic}. It's valid to feel {emotion}."
+            }
+            reply = replies.get(emotion, f"I'm following what you're saying about {topic}.")
             return reply, emotion, emotion_data['score']
 
     return ContextualBot()
 
-# --- APP LAYOUT ---
 bot = load_sentience_engine()
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello. I'm Sentience. I'm here to listen and understand your context. How are you?", "emotion": "neutral", "score": 1.0}
-    ]
+# --- MULTI-CHAT SESSION MANAGEMENT ---
+if "all_chats" not in st.session_state:
+    st.session_state.all_chats = {} # Dictionary to store { "Chat Name": [messages] }
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = "Default Chat"
+if st.session_state.current_chat_id not in st.session_state.all_chats:
+    st.session_state.all_chats[st.session_state.current_chat_id] = []
 
-st.title("🔮 Sentience Intelligence")
-st.caption("Contextually Aware Emotional Analysis")
+# --- SIDEBAR: HISTORY & NEW CHAT ---
+with st.sidebar:
+    st.title("🔮 Sentience AI")
+    
+    if st.button("➕ New Chat", use_container_width=True, type="primary"):
+        # Create a unique ID for the new chat
+        new_id = f"Chat {datetime.now().strftime('%H:%M:%S')}"
+        st.session_state.all_chats[new_id] = []
+        st.session_state.current_chat_id = new_id
+        st.rerun()
 
-# Display History
-for msg in st.session_state.messages:
+    st.markdown("---")
+    st.subheader("Previous Chats")
+    
+    # Selection box to switch between chats
+    chat_options = list(st.session_state.all_chats.keys())
+    selected_chat = st.selectbox("Select History", chat_options, index=chat_options.index(st.session_state.current_chat_id))
+    
+    if selected_chat != st.session_state.current_chat_id:
+        st.session_state.current_chat_id = selected_chat
+        st.rerun()
+
+    if st.button("🗑️ Clear All History"):
+        st.session_state.all_chats = {"Default Chat": []}
+        st.session_state.current_chat_id = "Default Chat"
+        st.rerun()
+
+# --- MAIN CHAT INTERFACE ---
+st.title(f"Intelligence Stream: {st.session_state.current_chat_id}")
+current_messages = st.session_state.all_chats[st.session_state.current_chat_id]
+
+# Display current chat history
+for msg in current_messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
-        if msg["role"] == "assistant" and "emotion" in msg:
-            st.divider()
-            st.caption(f"Context: {msg['emotion'].upper()} | Confidence: {msg['score']:.0%}")
 
-# --- CHAT INPUT ---
-if prompt := st.chat_input("Share your thoughts..."):
-    # 1. Store User Message
-    st.session_state.messages.append({"role": "user", "content": prompt})
+# Chat Input
+if prompt := st.chat_input("Type your message..."):
+    # Append User Message
+    current_messages.append({"role": "user", "content": prompt})
     
-    # 2. Generate Contextual AI Message
-    with st.spinner("Processing context..."):
-        answer, emo, conf = bot.generate_contextual_reply(prompt, st.session_state.messages)
+    # Generate and Append AI Message
+    with st.spinner("Synthesizing..."):
+        answer, emo, conf = bot.generate_contextual_reply(prompt, current_messages)
     
-    # 3. Store AI Message
-    st.session_state.messages.append({
+    current_messages.append({
         "role": "assistant", 
         "content": answer, 
         "emotion": emo, 
