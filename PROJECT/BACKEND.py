@@ -1,96 +1,80 @@
-import os
-import random
-import pandas as pd
 import streamlit as st
-import plotly.express as px
+import pandas as pd
 from transformers import pipeline
+import random
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Sentience AI", page_icon="🔮", layout="wide")
-
-# --- BACKEND ENGINE ---
+# --- ENGINE INITIALIZATION ---
 @st.cache_resource
-def load_engine():
-    class ContextualEmpathyEngine:
+def load_sentience_engine():
+    class ContextualBot:
         def __init__(self):
-            # Using the specialized GoEmotions model
-            self.classifier = pipeline(
-                "text-classification", 
-                model="SamLowe/roberta-base-go_emotions", 
-                top_k=1
-            )
+            # Engine 1: Detects the Vibe
+            self.classifier = pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", top_k=1)
+            # Engine 2: Understands the Context (Summarization)
+            self.summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
-        def get_contextual_response(self, current_text, history):
-            # 1. Analyze current emotion
-            result = self.classifier(current_text)[0][0]
-            current_emotion = result['label']
-            score = result['score']
-
-            # 2. Reference the previous message if it exists
-            last_ai_msg = ""
-            if len(history) >= 2:
-                # Get the last AI response to see what we previously discussed
-                last_ai_msg = history[-2]['content']
-
-            # 3. Build a "Connected" Response
-            if current_emotion in ['sadness', 'disappointment', 'grief']:
-                response = f"I hear the sadness in that. It connects back to what we were discussing—{current_text}. I'm here to sit with you through this."
-            elif current_emotion in ['joy', 'gratitude', 'admiration']:
-                response = "That's a beautiful shift in energy! It's heartening to see this following our previous exchange."
-            elif current_emotion in ['anger', 'annoyance']:
-                response = "I can feel the tension rising. It's valid to feel this way, especially given the context of our chat."
+        def generate_contextual_reply(self, current_input, history):
+            # 1. Get Emotion
+            emotion_data = self.classifier(current_input)[0][0]
+            emotion = emotion_data['label']
+            
+            # 2. Extract Context (What have we been talking about?)
+            if len(history) > 2:
+                # Combine last 3 exchanges to find the core "topic"
+                past_text = " ".join([m["content"] for m in history[-3:]])
+                # Create a tiny summary (max 10 words) to use as context
+                try:
+                    context_summary = self.summarizer(past_text, max_length=15, min_length=5, do_sample=False)[0]['summary_text']
+                except:
+                    context_summary = "our conversation"
             else:
-                response = "I'm following your thoughts closely. Please, continue—I want to understand the full picture."
+                context_summary = "what you just shared"
 
-            return response, current_emotion, score
+            # 3. Construct Contextually Correct Response
+            if emotion in ['sadness', 'disappointment', 'remorse']:
+                reply = f"I can feel the weight in your words regarding {context_summary}. It's understandable to feel {emotion} when dealing with that. How are you holding up right now?"
+            elif emotion in ['joy', 'excitement', 'approval']:
+                reply = f"It’s great to hear some positivity about {context_summary}! That shift to {emotion} makes a lot of sense. What’s the highlight of this for you?"
+            elif emotion in ['anger', 'annoyance', 'frustration']:
+                reply = f"I hear your frustration. Dealing with {context_summary} is clearly draining. It’s valid to feel {emotion}—do you want to vent more about it?"
+            else:
+                reply = f"I'm following what you're saying about {context_summary}. It seems like a lot to process. What's the next step in your mind?"
 
-    return ContextualEmpathyEngine()
+            return reply, emotion, emotion_data['score']
 
-bot = load_engine()
+    return ContextualBot()
 
-# --- STATE MANAGEMENT ---
+# --- APP SETUP ---
+st.set_page_config(page_title="Sentience AI", layout="wide")
+bot = load_sentience_engine()
+
 if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "emotion_trend" not in st.session_state:
-    st.session_state.emotion_trend = [50]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello. I am here to listen and analyze. How are you today?", "emotion": "neutral", "score": 1.0}]
 
-# --- UI LAYOUT ---
-st.title("🔮 Sentience AI")
-st.markdown("---")
+# --- UI DISPLAY ---
+st.title("🔮 Sentience Contextual Intelligence")
 
-# Use a container for the chat to ensure scrolling works well
-chat_placeholder = st.container()
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+        if msg["role"] == "assistant" and "emotion" in msg:
+            st.caption(f"Contextual Tone: {msg['emotion']} | Accuracy: {msg['score']:.0%}")
 
-with chat_placeholder:
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-            if msg["role"] == "assistant":
-                st.caption(f"Reflecting on: {msg['emotion']} | Confidence: {msg['score']:.0%}")
-
-# --- INPUT & LOGIC ---
-if prompt := st.chat_input("Tell me what's on your mind..."):
-    # Add user message to history
+# --- LOGIC ---
+if prompt := st.chat_input("Type here..."):
+    # Save User Input
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Generate response based on current prompt AND history
-    response_text, emotion, conf = bot.get_contextual_response(prompt, st.session_state.messages)
+    # Generate Reply using History for Context
+    with st.spinner("Synthesizing context..."):
+        answer, emo, conf = bot.generate_contextual_reply(prompt, st.session_state.messages)
     
-    # Add AI response to history
+    # Save AI Reply
     st.session_state.messages.append({
         "role": "assistant", 
-        "content": response_text,
-        "emotion": emotion,
+        "content": answer, 
+        "emotion": emo, 
         "score": conf
     })
     
-    # Update trend data for the sidebar/analytics
-    st.session_state.emotion_trend.append(int(conf * 100))
     st.rerun()
-
-# --- OPTIONAL SIDEBAR FOR ANALYTICS ---
-with st.sidebar:
-    st.subheader("Conversation Resonance")
-    if len(st.session_state.emotion_trend) > 1:
-        st.line_chart(st.session_state.emotion_trend)
-    st.caption("Tracking emotional synchronization in real-time.")
