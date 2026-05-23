@@ -38,11 +38,11 @@ if "current_chat_id" not in st.session_state:
 
 # --- SIDEBAR: NAVIGATION ---
 with st.sidebar:
-    st.title("🔮 Sentience AI")
+    st.title("Sentience AI")
     
     if st.button("➕ New Chat", use_container_width=True, type="primary"):
         # Temporary ID until renamed
-        temp_id = f"New Chat {datetime.now().strftime('%H:%M:%S')}"
+        temp_id = f"New Chat"
         st.session_state.all_chats[temp_id] = []
         st.session_state.current_chat_id = temp_id
         st.rerun()
