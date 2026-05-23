@@ -1,91 +1,124 @@
 import streamlit as st
 import os
 
-# Configure the page first
-st.set_page_config(page_title="Empathetic AI Dev", layout="wide", initial_sidebar_state="collapsed")
+# Configure the page for a clean, centered layout
+st.set_page_config(page_title="Aware AI", page_icon="🌐", layout="centered", initial_sidebar_state="collapsed")
 
-# 1. Load the CSS dynamically
+# Load CSS dynamically
 def load_css(file_name):
-    # Get the absolute path of the directory where THIS Python file is located
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    # Join that directory path with the CSS file name
     css_path = os.path.join(current_dir, file_name)
-    
-    with open(css_path, "r") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    try:
+        with open(css_path, "r") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning(f"Styling file {file_name} not found. Running with default styles.")
 
-# Call the function with your exact CSS file name
 load_css("FRONTEND.css")
-# 2. Initialize Session State for Chat
+
+# App Header
+st.markdown("<h2 style='text-align: center; margin-bottom: 2rem;'>Contextual & Aware AI</h2>", unsafe_allow_html=True)
+
+# Initialize Session State
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "ai", "content": "Hi there. I'm ready to help you with your web development tasks today. How are you doing?", "metadata": "Baseline established."}
+        {"role": "assistant", "content": "Hello. I'm here to help you work through your topics today. What's on your mind?", "flagged": False}
     ]
 
-# 3. Create the Layout (Chat on Left, Analytics on Right)
-chat_col, analytics_col = st.columns([2.5, 1], gap="large")
+# Display Chat History
+for msg in st.session_state.messages:
+    # We use Streamlit's native chat UI for a cleaner look
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+        # If the AI flagged misinformation in its response, display a warning badge
+        if msg.get("flagged"):
+            st.markdown('<div class="guardrail-badge">⚠️ Misinformation / Policy Violation Detected</div>', unsafe_allow_html=True)
 
-with chat_col:
-    st.markdown("### Chat Interface")
-    
-    # Wrapper for chat history
-    st.markdown('<div class="chat-wrapper"><div class="chat-history">', unsafe_allow_html=True)
-    
-    for msg in st.session_state.messages:
-        if msg["role"] == "user":
-            st.markdown(f'<div class="user-bubble">{msg["content"]}</div>', unsafe_allow_html=True)
-        else:
-            # AI Bubble with optional metadata box
-            html_content = f"""
-            <div class="ai-bubble-container">
-                <div class="ai-author">AI Assistant</div>
-                <div class="ai-text">{msg["content"]}</div>
-            """
-            if "metadata" in msg and msg["metadata"]:
-                html_content += f'<div class="metadata-box"><b>Analysis:</b> {msg["metadata"]}</div>'
-            
-            html_content += "</div>"
-            st.markdown(html_content, unsafe_allow_html=True)
-            
-    st.markdown('</div></div>', unsafe_allow_html=True)
+# The Input Box (Anchored to the bottom natively by Streamlit)
+if prompt := st.chat_input("Message the assistant..."):
+    # 1. Add user prompt to UI
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-    # Input Box at the bottom
-    prompt = st.chat_input("Say something...")
-    if prompt:
-        # Add user message to state
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # NOTE: Here is where you would call your LLM API using the System Prompt provided above.
-        # For the prototype, we use a placeholder response.
-        mock_ai_response = "I understand what you're trying to achieve. Let's break that down together."
-        mock_analysis = "Detected a neutral, task-oriented intent."
-        
-        st.session_state.messages.append({"role": "ai", "content": mock_ai_response, "metadata": mock_analysis})
-        st.rerun()
+    # 2. Generate AI Response (Placeholder for your actual LLM API call)
+    # You would pass the System Prompt here, evaluate the input, and return the response.
+    
+    # Mock logic: Simulating the AI detecting something harmful/fake
+    is_harmful_or_fake = "fake" in prompt.lower() or "hate" in prompt.lower()
+    
+    if is_harmful_or_fake:
+        mock_response = "I need to clarify that the premise of that statement is factually incorrect. Let's look at the verified data..."
+    else:
+        mock_response = "That makes sense. Let's break down the best way to handle that."
 
-with analytics_col:
-    st.markdown("### Real-Time Analytics")
-    st.markdown('<div class="analytics-wrapper">', unsafe_allow_html=True)
-    
-    # Status Card 1
-    st.markdown("""
-    <div class="status-card">
-        <div class="card-title">Misinformation Scanner</div>
-        <div class="veracity-badge">Verified Clean</div>
-        <div class="card-description">No logical fallacies or manipulated facts detected in the current context window.</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Status Card 2
-    st.markdown("""
-    <div class="status-card">
-        <div class="card-title">Emotional Resonance</div>
-        <div class="toggle-row">
-            <span class="toggle-label">Empathy Engine</span>
-            <span>🟢 Active</span>
-        </div>
-        <div class="card-description" style="margin-top: 15px;">Currently matching user's conversational pacing and prioritizing problem resolution.</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    # 3. Add AI response to UI
+    st.session_state.messages.append({"role": "assistant", "content": mock_response, "flagged": is_harmful_or_fake})
+    with st.chat_message("assistant"):
+        st.markdown(mock_response)
+        if is_harmful_or_fake:
+            st.markdown('<div class="guardrail-badge">⚠️ Misinformation / Policy Violation Detected</div>', unsafe_allow_html=True)
+3. The Updated FRONTEND.css (Clean Interface)
+To get that highly focused, general interface without clutter, replace your CSS with this. It removes the custom bubble shapes in favor of Streamlit's native blocks, but styles them to look premium and legible.
+
+CSS
+/* --- Global Variables --- */
+:root {
+  --bg-main: #ffffff;
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --accent-red: #dc2626;
+  --accent-red-light: #fee2e2;
+}
+
+/* --- App Background and Typography --- */
+[data-testid="stAppViewContainer"] {
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Inter', -apple-system, sans-serif !important;
+}
+
+header[data-testid="stHeader"] {
+    display: none; /* Hides the top right deploy menu for a cleaner look */
+}
+
+/* --- Chat Interface Styling --- */
+/* Makes the chat messages blend cleanly into the background */
+[data-testid="stChatMessage"] {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 1rem 0 !important;
+}
+
+/* Adjusts the avatar sizing */
+[data-testid="stChatMessageAvatarIcon"] {
+    width: 2rem;
+    height: 2rem;
+}
+
+/* --- Guardrail / Misinformation Badge --- */
+.guardrail-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--accent-red-light);
+  color: var(--accent-red);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 10px;
+  border: 1px solid #fca5a5;
+}
+
+/* --- Input Area Styling --- */
+/* Makes the bottom input bar look more like ChatGPT */
+[data-testid="stChatInput"] {
+    border-radius: 12px;
+    border: 1px solid #e5e5e5;
+    background-color: #f9fafb;
+}
+
+[data-testid="stChatInput"]:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px #2563eb;
+}
