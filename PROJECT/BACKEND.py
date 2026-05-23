@@ -7,8 +7,14 @@ current_dir = os.path.dirname(__file__)
 css_path = os.path.join(current_dir, "FRONTEND.css")
 
 if os.path.exists(css_path):
-    with open(css_path, "r") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allowed_html=True)
+    try:
+        # Added explicit utf-8 encoding to fix server environment decode errors
+        with open(css_path, "r", encoding="utf-8") as f:
+            css_content = f.read()
+            if css_content.strip():  # Verify file is not empty
+                st.markdown(f"<style>{css_content}</style>", unsafe_allowed_html=True)
+    except Exception as e:
+        st.error(f"Error loading styles: {e}")
 else:
     st.error("FRONTEND.css file not found!")
 
