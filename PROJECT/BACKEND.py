@@ -1,4 +1,16 @@
 from transformers import pipeline
+import os
+import streamlit as st
+
+# Find the absolute path to FRONTEND.css next to BACKEND.py
+current_dir = os.path.dirname(__file__)
+css_path = os.path.join(current_dir, "FRONTEND.css")
+
+if os.path.exists(css_path):
+    with open(css_path, "r") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allowed_html=True)
+else:
+    st.error("FRONTEND.css file not found!")
 
 class EmpatheticBot:
     def __init__(self):
