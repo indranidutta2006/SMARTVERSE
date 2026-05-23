@@ -1,48 +1,46 @@
 import streamlit as st
 from transformers import pipeline
-from datetime import datetime
+import requests # Used for the generative API call
 
-# --- ENGINE CONFIG ---
+# --- DYNAMIC GENERATOR SETUP ---
 @st.cache_resource
-def load_context_engine():
-    class AdvancedSentience:
+def load_sentience_engine():
+    class DynamicSentience:
         def __init__(self):
-            # Stability: using text-classification for sentiment/intent
-            self.classifier = pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", top_k=1)
+            # 1. The 'Ear': Detects how the user feels
+            self.classifier = pipeline("text-classification", model="SamLowe/roberta-base-go_emotions")
             
-        def generate_title(self, text):
-            """Creates a meaningful sidebar label from the first message"""
-            words = [w for w in text.split() if len(w) > 3]
-            return " ".join(words[:3]).title() if words else "New Chat"
-
-        def get_human_reply(self, current_text, history):
-            # 1. Detect emotion
-            emo_result = self.classifier(current_text)[0][0]
-            emotion = emo_result['label']
+        def generate_dynamic_reply(self, prompt, history, api_key):
+            # A. Get the Emotion
+            emo = self.classifier(prompt)[0][0]
+            emotion_label = emo['label']
             
-            # 2. Contextual Inference (Sliding Window)
-            # We look at the last user topic to acknowledge continuity
-            context_snippet = ""
-            if len(history) >= 2:
-                prev_text = history[-2]['content']
-                context_snippet = " ".join(prev_text.split()[-3:])
-
-            # 3. Build Response with 'Human' continuity
-            prefix = f"Regarding what we discussed about {context_snippet}... " if context_snippet else ""
+            # B. Build the 'Memory' context
+            past_context = "\n".join([f"{m['role']}: {m['content']}" for m in history[-3:]])
             
-            responses = {
-                'sadness': f"{prefix}I'm so sorry you're feeling this way. It sounds like a lot to handle.",
-                'joy': f"{prefix}That's amazing! I can really feel the excitement in your words.",
-                'anger': f"{prefix}I hear the frustration. It's completely valid to feel that way.",
-                'curiosity': f"{prefix}That's a great question. Let's explore that more deeply."
-            }
+            # C. Call a Generative Model (Example using a free Inference API)
+            # You can replace this with OpenAI, Anthropic, or a local Llama model
+            API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+            headers = {"Authorization": f"Bearer {api_key}"}
             
-            main_reply = responses.get(emotion, f"{prefix}I'm following you. Tell me more about how you're feeling.")
-            return main_reply, emotion, emo_result['score']
+            system_instruction = f"You are a helpful AI. The user is feeling {emotion_label}. " \
+                                 f"Respond naturally, acknowledging the history: {past_context}"
+            
+            payload = {"inputs": f"{system_instruction}\nUser: {prompt}\nAI:"}
+            response = requests.post(API_URL, headers=headers, json=payload)
+            
+            try:
+                # Extracting just the generated text
+                full_text = response.json()[0]['generated_text']
+                reply = full_text.split("AI:")[-1].strip()
+            except:
+                reply = "I'm having trouble generating a thought right now, but I hear you."
+                
+            return reply, emotion_label, emo['score']
 
-    return AdvancedSentience()
+    return DynamicSentience()
 
-bot = load_context_engine()
+bot = load_sentience_engine()
 
 # --- MULTI-CHAT SESSION STATE ---
 if "all_chats" not in st.session_state:
