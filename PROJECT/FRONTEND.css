@@ -1,60 +1,66 @@
 /* --- Custom Global CSS Variables --- */
 :root {
   --bg-main: #f8fafc;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
   --primary-blue: #2563eb;
-  --border-color: #e2e8f0;
+  --border-color: #cbd5e1;
   --meta-bg: #f1f5f9;
-  --accent-amber: #d97706;
+  --accent-amber: #b45309;
   --accent-amber-light: #fef3c7;
 }
 
 /* --- Streamlit Native Layout Overrides --- */
-
-/* Safely updates the background canvas across the app without breaking DOM hierarchies */
 [data-testid="stAppViewContainer"] {
   background-color: var(--bg-main) !important;
   color: var(--text-primary) !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
-/* Coordinates column blocks gracefully within Streamlit frameworks */
-[data-testid="stHorizontalBlock"] {
-  gap: 32px !important;
-}
-
-/* Clean title and text overrides */
-h1, h2, h3, .panel-title {
-  color: var(--text-primary) !important;
-  font-weight: 600 !important;
+/* Hide the default Streamlit top header for a cleaner app feel */
+header[data-testid="stHeader"] {
+    display: none;
 }
 
 /* --- LEFT COLUMN: Chat Interface Components --- */
-
 .chat-wrapper {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  height: 70vh; /* Keeps it contained within the viewport */
+  border-radius: 12px;
+  background-color: transparent;
 }
 
 .chat-history {
   flex-grow: 1;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 15px;
+  margin-bottom: 20px;
+}
+
+/* Custom Scrollbar for Chat */
+.chat-history::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-history::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-history::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
 }
 
 /* User Message Chat Bubble */
 .user-bubble {
   background-color: var(--primary-blue);
   color: #ffffff;
-  padding: 12px 18px;
-  border-radius: 18px 18px 0px 18px;
-  margin: 12px 0 12px auto;
+  padding: 14px 20px;
+  border-radius: 20px 20px 4px 20px;
+  margin: 16px 0 16px auto;
   max-width: 75%;
   font-size: 0.95rem;
-  line-height: 1.4;
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+  line-height: 1.5;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
   text-align: left;
 }
 
@@ -62,36 +68,38 @@ h1, h2, h3, .panel-title {
 .ai-bubble-container {
   background-color: #ffffff;
   border: 1px solid var(--border-color);
-  border-radius: 18px 18px 18px 0px;
-  margin: 12px auto 12px 0;
+  border-radius: 20px 20px 20px 4px;
+  margin: 16px auto 16px 0;
   max-width: 85%;
-  padding: 18px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
 }
 
 .ai-author {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 6px;
-  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .ai-text {
   font-size: 0.95rem;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--text-primary);
 }
 
-/* Embedded Meta-Data/Analysis Box inside Chat */
+/* Embedded Meta-Data Box */
 .metadata-box {
   background-color: var(--meta-bg);
-  border-left: 4px solid var(--primary-blue);
-  border-radius: 6px;
+  border-left: 3px solid var(--primary-blue);
+  border-radius: 0 6px 6px 0;
   font-size: 0.85rem;
-  line-height: 1.6;
-  margin-top: 14px;
+  line-height: 1.5;
+  margin-top: 16px;
   padding: 12px 16px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .metadata-box b {
@@ -100,53 +108,52 @@ h1, h2, h3, .panel-title {
 }
 
 /* --- RIGHT COLUMN: Real-Time Analytics Cards --- */
-
 .analytics-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .status-card {
   background-color: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
-  margin-bottom: 16px;
+  padding: 22px;
+  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
 }
 
 .card-title {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   margin-bottom: 12px;
   color: var(--text-primary);
 }
 
-/* Veracity Badge Pill */
 .veracity-badge {
   display: inline-flex;
   align-items: center;
   background-color: var(--accent-amber-light);
   color: var(--accent-amber);
   padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  gap: 6px;
-  margin-top: 4px;
 }
 
 .card-description {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-top: 10px;
-  line-height: 1.4;
+  margin-top: 12px;
+  line-height: 1.5;
 }
 
-/* --- Custom Toggle Adjustments --- */
 .toggle-row {
   display: flex;
   align-items: center;
@@ -154,6 +161,7 @@ h1, h2, h3, .panel-title {
 }
 
 .toggle-label {
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
