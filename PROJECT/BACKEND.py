@@ -17,9 +17,8 @@ def load_dynamic_engine():
             # 2. Generative Model API (Using HuggingFace free inference layer)
             self.API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
             
-            # CRITICAL SECURITY FIX: Fetch the secret safely from your environment configuration.
-            # Do NOT paste your raw 'hf_...' token text string here. 
-            # Place it in your local `.streamlit/secrets.toml` file under: HF_TOKEN = "your_key_here"
+            # --- FIXED SECRETS RETRIEVAL LAYER ---
+            # This references the variable flag inside your local .streamlit/secrets.toml file or cloud dashboard
             hf_token = st.secrets.get("HF_TOKEN", "")
             self.headers = {"Authorization": f"Bearer {hf_token}"} 
 
