@@ -1,93 +1,67 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime
 from transformers import pipeline
 
-# --- ENGINE ---
+# --- CONTEXTUAL ENGINE ---
 @st.cache_resource
-def load_engine():
-    class SmartBot:
+def load_context_engine():
+    class HumanLikeBot:
         def __init__(self):
-            # Using the stable classification model
+            # Stability: using text-classification for emotion/intent detection
             self.classifier = pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", top_k=1)
-        
-        def generate_title(self, text):
-            """Extracts a short title from the first message"""
-            words = [w for w in text.split() if len(w) > 3]
-            # Take the first 3 meaningful words
-            title = " ".join(words[:3]).title()
-            return title if title else "New Conversation"
+            
+        def generate_human_reply(self, current_text, history):
+            # 1. ANALYZE CURRENT STATE
+            current_emo = self.classifier(current_text)[0][0]
+            
+            # 2. ANALYZE HISTORY (Looking for the 'it' factor)
+            context_snippet = ""
+            if len(history) >= 2:
+                # Reference the last user topic to maintain continuity
+                prev_user_text = history[-2]['content']
+                context_snippet = " ".join(prev_user_text.split()[-2:])
 
-        def get_reply(self, text, history):
-            # Detect emotion
-            emo = self.classifier(text)[0][0]
-            # Simple keyword extraction for context
-            topic = " ".join([w for w in text.split() if len(w) > 3][-2:])
-            reply = f"I hear you talking about {topic}. It sounds like you're feeling {emo['label']}."
-            return reply, emo['label'], emo['score']
+            # 3. BUILD DYNAMIC RESPONSE
+            if context_snippet and len(history) > 2:
+                reply = f"Building on what you said about {context_snippet}... "
+            else:
+                reply = ""
 
-    return SmartBot()
+            # Branching based on emotion
+            if current_emo['label'] in ['sadness', 'disappointment']:
+                reply += "I'm really sorry to hear that. I'm here for you—want to share more?"
+            elif current_emo['label'] in ['joy', 'excitement']:
+                reply += "That's fantastic! I love hearing positive updates like this."
+            else:
+                reply += "I see. I'm following your point—what's next on your mind?"
 
-bot = load_engine()
+            return reply, current_emo['label'], current_emo['score']
 
-# --- STATE MANAGEMENT ---
-if "all_chats" not in st.session_state:
-    st.session_state.all_chats = {} # { "Chat Name": [messages] }
-if "current_chat_id" not in st.session_state:
-    st.session_state.current_chat_id = None
+    return HumanLikeBot()
 
-# --- SIDEBAR: NAVIGATION ---
-with st.sidebar:
-    st.title("Sentience AI")
+bot = load_context_engine()
+
+# --- STREAMLIT CHAT APP ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+st.title("🔮 Contextual Sentience")
+
+# Display historical messages
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
+# User Input
+if prompt := st.chat_input("Tell me what's happening..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
     
-    if st.button("➕ New Chat", use_container_width=True, type="primary"):
-        # Temporary ID until renamed
-        temp_id = f"New Chat"
-        st.session_state.all_chats[temp_id] = []
-        st.session_state.current_chat_id = temp_id
-        st.rerun()
-
-    st.markdown("---")
-    st.subheader("History")
+    # Process with history awareness
+    answer, emo, conf = bot.generate_human_reply(prompt, st.session_state.messages)
     
-    # List all chat names
-    for chat_id in list(st.session_state.all_chats.keys()):
-        if st.button(f"💬 {chat_id}", key=chat_id, use_container_width=True):
-            st.session_state.current_chat_id = chat_id
-            st.rerun()
-
-# --- MAIN INTERFACE ---
-if st.session_state.current_chat_id is None:
-    st.info("Click 'New Chat' to start a conversation.")
-else:
-    st.title(st.session_state.current_chat_id)
-    chat_history = st.session_state.all_chats[st.session_state.current_chat_id]
-
-    # Display History
-    for msg in chat_history:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-
-    # Chat Input
-    if prompt := st.chat_input("Say something..."):
-        # 1. Store User Input
-        chat_history.append({"role": "user", "content": prompt})
-
-        # 2. DYNAMIC RENAMING (Only if it's the first message)
-        if len(chat_history) == 1:
-            new_title = bot.generate_title(prompt)
-            # Transfer history to new key and delete old one
-            st.session_state.all_chats[new_title] = st.session_state.all_chats.pop(st.session_state.current_chat_id)
-            st.session_state.current_chat_id = new_title
-
-        # 3. Generate AI Response
-        with st.spinner("Reflecting..."):
-            answer, emo, conf = bot.get_reply(prompt, chat_history)
-        
-        chat_history.append({
-            "role": "assistant", 
-            "content": answer, 
-            "emotion": emo, 
-            "score": conf
-        })
-        st.rerun()
+    st.session_state.messages.append({
+        "role": "assistant", 
+        "content": answer,
+        "emotion": emo,
+        "score": conf
+    })
+    st.rerun()
