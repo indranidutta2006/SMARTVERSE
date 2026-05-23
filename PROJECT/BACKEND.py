@@ -17,7 +17,7 @@ def load_dynamic_engine():
             # 2. Generative Model API (Using HuggingFace free inference)
             self.API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
             # It will look for your token inside .streamlit/secrets.toml
-            self.headers = {"Authorization": f"Bearer {st.secrets.get('HF_TOKEN', '')}"} 
+            self.headers = {"Authorization": f"Bearer {st.secrets.get('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', '')}"} 
 
         def generate_title(self, text):
             words = [w for w in text.split() if len(w) > 3]
