@@ -93,4 +93,53 @@ if not st.session_state.all_chats:
 
 with st.sidebar:
     st.title("🔮 Sentience AI")
-    if st.button("➕ New
+    if st.button("➕ New Chat", use_container_width=True, type="primary"):
+        # Create a temporary unique chat key containing a clean placeholder string
+        tid = f"New Chat ({datetime.now().strftime('%H:%M')})"
+        # Seed the new history with the required default greeting statement instantly
+        st.session_state.all_chats[tid] = [
+            {"role": "assistant", "content": "Hi, how can I help you today?"}
+        ]
+        st.session_state.current_chat_id = tid
+        st.rerun()
+        
+    st.markdown("---")
+    st.subheader("Saved Histories")
+    for cid in list(st.session_state.all_chats.keys()):
+        if st.button(f"💬 {cid}", key=cid, use_container_width=True):
+            st.session_state.current_chat_id = cid
+            st.rerun()
+
+# --- MAIN CHAT INTERFACE ---
+if st.session_state.current_chat_id:
+    active_history = st.session_state.all_chats[st.session_state.current_chat_id]
+    st.title(st.session_state.current_chat_id)
+
+    # Render clean human dialogue rows without metadata scales
+    for msg in active_history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    if prompt := st.chat_input("Share what's on your mind..."):
+        # Check if the session is still named by default placeholders and has no user speech yet
+        is_fresh_session = (len(active_history) == 1 and active_history[0]["role"] == "assistant")
+        
+        # Append the new user text message object to our active history chain array
+        active_history.append({"role": "user", "content": prompt})
+        
+        # Dynamic Renaming execution based on user's very first intent input statement
+        if is_fresh_session:
+            new_title = bot.generate_title(prompt)
+            # Safeguard overlapping key collisions
+            if new_title not in st.session_state.all_chats:
+                st.session_state.all_chats[new_title] = st.session_state.all_chats.pop(st.session_state.current_chat_id)
+                st.session_state.current_chat_id = new_title
+                active_history = st.session_state.all_chats[new_title]
+
+        with st.spinner("Reflecting..."):
+            # Fetch dynamic continuous reply passing our complete chronological list object
+            reply = bot.get_dynamic_reply(prompt, active_history)
+        
+        # Persist assistant result statement block to memory chain array
+        active_history.append({"role": "assistant", "content": reply})
+        st.rerun()
