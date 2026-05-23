@@ -101,7 +101,8 @@ with chat_col:
     with chat_container:
         for msg in st.session_state.messages:
             if msg["role"] == "user":
-                st.markdown(f'<div class="user-bubble">{msg["content"]}</div>', unsafe_allowed_html=True)
+                # FIXED HERE: Changed unsafe_allowed_html to unsafe_allow_html
+                st.markdown(f'<div class="user-bubble">{msg["content"]}</div>', unsafe_allow_html=True)
             else:
                 st.markdown(f"""
                     <div class="ai-bubble-container">
@@ -114,7 +115,7 @@ with chat_col:
                             🛡️ <b>Source reliability:</b> Verified (BBC/AP)
                         </div>
                     </div>
-                """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True) # Checked this one too! It is correct.
 
     user_input = st.chat_input("Share your thoughts or ask a question...")
 
