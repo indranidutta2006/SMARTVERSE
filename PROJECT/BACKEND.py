@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="Sentience AI",
-    page_icon="🔮",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -34,7 +34,7 @@ else:
 @st.cache_resource
 def load_bot():
     # Adding a status spinner to prevent a blank white screen during weight download
-    with st.status("🔮 Initializing Sentience Engine & Downloading NLP Weights...", expanded=True) as status:
+    with st.status("Initializing Sentience Engine & Downloading NLP Weights...", expanded=True) as status:
         st.write("Loading Deep Learning Model Framework...")
         
         class EmpatheticBot:
