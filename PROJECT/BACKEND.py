@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import time
 from datetime import datetime
 
 # --- PAGE CONFIG ---
@@ -14,22 +15,43 @@ def load_dynamic_engine():
             hf_token = st.secrets.get("HF_TOKEN", "")
             self.headers = {"Authorization": f"Bearer {hf_token}"} 
             
-            # API Endpoints (Routing BOTH models through cloud endpoints to fix server space issues)
+            # API Endpoints
             self.EMOTION_URL = "https://api-inference.huggingface.co/models/SamLowe/roberta-base-go_emotions"
             self.GENERATION_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+
+        def _query_api_with_retry(self, url, payload, max_retries=5, initial_delay=3):
+            """Safely waits and retries if the Hugging Face model is waking up (Cold Start)"""
+            delay = initial_delay
+            for i in range(max_retries):
+                try:
+                    response = requests.post(url, headers=self.headers, json=payload, timeout=15)
+                    res_json = response.json()
+                    
+                    # Check if Hugging Face tells us the model is loading
+                    if isinstance(res_json, dict) and "estimated_time" in res_json:
+                        time.sleep(delay)
+                        delay += 2  # Gradually increase wait time
+                        continue
+                        
+                    response.raise_for_status()
+                    return res_json
+                except Exception:
+                    if i == max_retries - 1:
+                        raise
+                    time.sleep(delay)
+            return None
 
         def generate_title(self, text):
             words = [w for w in text.split() if len(w) > 3]
             return " ".join(words[:3]).title() if words else "Conversation Thread"
 
         def get_dynamic_reply(self, prompt, history):
-            # 1. Cloud-based Emotion Detection
+            # 1. Cloud-based Emotion Detection with retry framework
             try:
-                emo_resp = requests.post(self.EMOTION_URL, headers=self.headers, json={"inputs": prompt}, timeout=5)
-                # Parse GoEmotions nested list format safely
-                emotion = emo_resp.json()[0][0]['label']
+                emo_data = self._query_api_with_retry(self.EMOTION_URL, {"inputs": prompt})
+                emotion = emo_data[0][0]['label']
             except Exception:
-                emotion = "neutral" # Intelligent safety fallback if endpoint is sleeping
+                emotion = "neutral" 
             
             # 2. Build Continuous Conversation Memory Context
             conversation_context = ""
@@ -56,11 +78,10 @@ def load_dynamic_engine():
                 }
             }
             
-            # 3. Dynamic Text Generation
+            # 3. Dynamic Text Generation with retry framework
             try:
-                response = requests.post(self.GENERATION_URL, headers=self.headers, json=payload, timeout=8)
-                response.raise_for_status()
-                gen_text = response.json()[0]['generated_text']
+                gen_data = self._query_api_with_retry(self.GENERATION_URL, payload)
+                gen_text = gen_data[0]['generated_text']
                 reply = gen_text.split("[/INST]")[-1].strip()
             except Exception:
                 reply = "I'm reflecting deeply on what you just shared. Could you talk a bit more about that thought?"
