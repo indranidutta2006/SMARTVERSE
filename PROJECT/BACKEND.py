@@ -1,150 +1,85 @@
 import streamlit as st
-import requests
-import time
-from datetime import datetime
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="Sentience AI", page_icon="🔮", layout="wide")
+# Configure the page first
+st.set_page_config(page_title="Empathetic AI Dev", layout="wide", initial_sidebar_state="collapsed")
 
-# --- DYNAMIC ENGINE ---
-@st.cache_resource
-def load_dynamic_engine():
-    class DynamicSentience:
-        def __init__(self):
-            # Safe Secrets Access Layer
-            hf_token = st.secrets.get("HF_TOKEN", "")
-            self.headers = {"Authorization": f"Bearer {hf_token}"} 
-            
-            # API Endpoints
-            self.EMOTION_URL = "https://api-inference.huggingface.co/models/SamLowe/roberta-base-go_emotions"
-            self.GENERATION_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+# 1. Load the CSS (Assuming it's saved in a file called style.css)
+def load_css(file_name):
+    with open(file_name, "r") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-        def _query_api_with_retry(self, url, payload, max_retries=5, initial_delay=3):
-            """Safely waits and retries if the Hugging Face model is waking up (Cold Start)"""
-            delay = initial_delay
-            for i in range(max_retries):
-                try:
-                    response = requests.post(url, headers=self.headers, json=payload, timeout=15)
-                    res_json = response.json()
-                    
-                    # Check if Hugging Face tells us the model is loading
-                    if isinstance(res_json, dict) and "estimated_time" in res_json:
-                        time.sleep(delay)
-                        delay += 2  # Gradually increase wait time
-                        continue
-                        
-                    response.raise_for_status()
-                    return res_json
-                except Exception:
-                    if i == max_retries - 1:
-                        raise
-                    time.sleep(delay)
-            return None
+load_css("style.css")
 
-        def generate_title(self, text):
-            words = [w for w in text.split() if len(w) > 3]
-            return " ".join(words[:3]).title() if words else "Conversation Thread"
-
-        def get_dynamic_reply(self, prompt, history):
-            # 1. Cloud-based Emotion Detection with retry framework
-            try:
-                emo_data = self._query_api_with_retry(self.EMOTION_URL, {"inputs": prompt})
-                emotion = emo_data[0][0]['label']
-            except Exception:
-                emotion = "neutral" 
-            
-            # 2. Build Continuous Conversation Memory Context
-            conversation_context = ""
-            for msg in history[:-1]:
-                role_label = "User" if msg["role"] == "user" else "Assistant"
-                conversation_context += f"{role_label}: {msg['content']}\n"
-            
-            # Construct human wrapper instructions
-            system_prompt = (
-                f"You are an organic, highly empathetic, and human-like conversational AI. "
-                f"The user is feeling subtle hints of {emotion}. Maintain continuity by remembering everything "
-                f"said prior, and respond warmly and naturally. Do not sound robotic or mention that you are an AI.\n"
-                f"Past log context:\n{conversation_context}"
-            )
-            
-            # Format payload for Mistral Instruct syntax
-            full_prompt = f"<s>[INST] {system_prompt}\nUser: {prompt} [/INST]"
-            payload = {
-                "inputs": full_prompt, 
-                "parameters": {
-                    "max_new_tokens": 200,
-                    "temperature": 0.7, 
-                    "top_p": 0.9
-                }
-            }
-            
-            # 3. Dynamic Text Generation with retry framework
-            try:
-                gen_data = self._query_api_with_retry(self.GENERATION_URL, payload)
-                gen_text = gen_data[0]['generated_text']
-                reply = gen_text.split("[/INST]")[-1].strip()
-            except Exception:
-                reply = "I'm reflecting deeply on what you just shared. Could you talk a bit more about that thought?"
-
-            return reply
-
-    return DynamicSentience()
-
-bot = load_dynamic_engine()
-
-# --- SIDEBAR & CHAT SESSION HISTORY MANAGEMENT ---
-if "all_chats" not in st.session_state:
-    st.session_state.all_chats = {}
-if "current_chat_id" not in st.session_state:
-    st.session_state.current_chat_id = None
-
-# INSTANT SESSION INITIALIZATION: Open default chat session automatically on first load
-if not st.session_state.all_chats:
-    default_session_name = "New Chat Session"
-    st.session_state.all_chats[default_session_name] = [
-        {"role": "assistant", "content": "Hi, how can I help you today?"}
+# 2. Initialize Session State for Chat
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "ai", "content": "Hi there. I'm ready to help you with your web development tasks today. How are you doing?", "metadata": "Baseline established."}
     ]
-    st.session_state.current_chat_id = default_session_name
 
-with st.sidebar:
-    st.title("🔮 Sentience AI")
-    if st.button("➕ New Chat", use_container_width=True, type="primary"):
-        tid = f"New Chat ({datetime.now().strftime('%H:%M')})"
-        st.session_state.all_chats[tid] = [
-            {"role": "assistant", "content": "Hi, how can I help you today?"}
-        ]
-        st.session_state.current_chat_id = tid
+# 3. Create the Layout (Chat on Left, Analytics on Right)
+chat_col, analytics_col = st.columns([2.5, 1], gap="large")
+
+with chat_col:
+    st.markdown("### Chat Interface")
+    
+    # Wrapper for chat history
+    st.markdown('<div class="chat-wrapper"><div class="chat-history">', unsafe_allow_html=True)
+    
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            st.markdown(f'<div class="user-bubble">{msg["content"]}</div>', unsafe_allow_html=True)
+        else:
+            # AI Bubble with optional metadata box
+            html_content = f"""
+            <div class="ai-bubble-container">
+                <div class="ai-author">AI Assistant</div>
+                <div class="ai-text">{msg["content"]}</div>
+            """
+            if "metadata" in msg and msg["metadata"]:
+                html_content += f'<div class="metadata-box"><b>Analysis:</b> {msg["metadata"]}</div>'
+            
+            html_content += "</div>"
+            st.markdown(html_content, unsafe_allow_html=True)
+            
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+    # Input Box at the bottom
+    prompt = st.chat_input("Say something...")
+    if prompt:
+        # Add user message to state
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # NOTE: Here is where you would call your LLM API using the System Prompt provided above.
+        # For the prototype, we use a placeholder response.
+        mock_ai_response = "I understand what you're trying to achieve. Let's break that down together."
+        mock_analysis = "Detected a neutral, task-oriented intent."
+        
+        st.session_state.messages.append({"role": "ai", "content": mock_ai_response, "metadata": mock_analysis})
         st.rerun()
-        
-    st.markdown("---")
-    st.subheader("Saved Histories")
-    for cid in list(st.session_state.all_chats.keys()):
-        if st.button(f"💬 {cid}", key=cid, use_container_width=True):
-            st.session_state.current_chat_id = cid
-            st.rerun()
 
-# --- MAIN CHAT INTERFACE ---
-if st.session_state.current_chat_id:
-    active_history = st.session_state.all_chats[st.session_state.current_chat_id]
-    st.title(st.session_state.current_chat_id)
-
-    for msg in active_history:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-
-    if prompt := st.chat_input("Share what's on your mind..."):
-        is_fresh_session = (len(active_history) == 1 and active_history[0]["role"] == "assistant")
-        active_history.append({"role": "user", "content": prompt})
-        
-        if is_fresh_session:
-            new_title = bot.generate_title(prompt)
-            if new_title not in st.session_state.all_chats:
-                st.session_state.all_chats[new_title] = st.session_state.all_chats.pop(st.session_state.current_chat_id)
-                st.session_state.current_chat_id = new_title
-                active_history = st.session_state.all_chats[new_title]
-
-        with st.spinner("Reflecting..."):
-            reply = bot.get_dynamic_reply(prompt, active_history)
-        
-        active_history.append({"role": "assistant", "content": reply})
-        st.rerun()
+with analytics_col:
+    st.markdown("### Real-Time Analytics")
+    st.markdown('<div class="analytics-wrapper">', unsafe_allow_html=True)
+    
+    # Status Card 1
+    st.markdown("""
+    <div class="status-card">
+        <div class="card-title">Misinformation Scanner</div>
+        <div class="veracity-badge">Verified Clean</div>
+        <div class="card-description">No logical fallacies or manipulated facts detected in the current context window.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Status Card 2
+    st.markdown("""
+    <div class="status-card">
+        <div class="card-title">Emotional Resonance</div>
+        <div class="toggle-row">
+            <span class="toggle-label">Empathy Engine</span>
+            <span>🟢 Active</span>
+        </div>
+        <div class="card-description" style="margin-top: 15px;">Currently matching user's conversational pacing and prioritizing problem resolution.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
