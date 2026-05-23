@@ -16,7 +16,7 @@ def load_dynamic_engine():
             
             # 2. Generative Model API (Using HuggingFace free inference - replace with your key)
             self.API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-            self.headers = {"Authorization": "Bearer YOUR_HF_TOKEN"} # Get a free token at huggingface.co/settings/tokens
+            self.headers = {"Authorization": "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"} # Get a free token at huggingface.co/settings/tokens
 
         def generate_title(self, text):
             words = [w for w in text.split() if len(w) > 3]
