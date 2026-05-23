@@ -4,6 +4,8 @@ import pandas as pd
 import plotly.graph_objects as px
 import streamlit as st
 from transformers import pipeline
+import plotly.express as px  # This fixes the px.line AttributeError!
+import plotly.graph_objects as go
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
