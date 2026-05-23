@@ -1,15 +1,21 @@
 import streamlit as st
+import os
 
 # Configure the page first
 st.set_page_config(page_title="Empathetic AI Dev", layout="wide", initial_sidebar_state="collapsed")
 
-# 1. Load the CSS (Assuming it's saved in a file called style.css)
+# 1. Load the CSS dynamically
 def load_css(file_name):
-    with open(file_name, "r") as f:
+    # Get the absolute path of the directory where THIS Python file is located
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Join that directory path with the CSS file name
+    css_path = os.path.join(current_dir, file_name)
+    
+    with open(css_path, "r") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
+# Call the function with your exact CSS file name
 load_css("FRONTEND.css")
-
 # 2. Initialize Session State for Chat
 if "messages" not in st.session_state:
     st.session_state.messages = [
