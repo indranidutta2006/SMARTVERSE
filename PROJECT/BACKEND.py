@@ -49,3 +49,43 @@ bot = load_dynamic_engine()
 
 # --- SIDEBAR & HISTORY LOGIC ---
 if "all_chats" not in st.session_state: st.session_state.all_chats = {}
+if "current_chat_id" not in st.session_state: st.session_state.current_chat_id = None
+
+with st.sidebar:
+    st.title("🔮 Sentience AI")
+    if st.button("➕ New Chat", use_container_width=True, type="primary"):
+        tid = f"New Chat {datetime.now().strftime('%H:%M:%S')}"
+        st.session_state.all_chats[tid] = []
+        st.session_state.current_chat_id = tid
+        st.rerun()
+    st.markdown("---")
+    for cid in list(st.session_state.all_chats.keys()):
+        if st.button(f"💬 {cid}", key=cid, use_container_width=True):
+            st.session_state.current_chat_id = cid
+            st.rerun()
+
+# --- MAIN INTERFACE ---
+if st.session_state.current_chat_id:
+    active_history = st.session_state.all_chats[st.session_state.current_chat_id]
+    st.title(st.session_state.current_chat_id)
+
+    # Display clean history without the metadata scales
+    for msg in active_history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+            # The line tracking 'st.caption(Tone/Confidence)' has been removed from here 
+
+    if prompt := st.chat_input("What's on your mind?"):
+        if not active_history:
+            new_t = bot.generate_title(prompt)
+            st.session_state.all_chats[new_t] = st.session_state.all_chats.pop(st.session_state.current_chat_id)
+            st.session_state.current_chat_id = new_t
+            active_history = st.session_state.all_chats[new_t]
+
+        active_history.append({"role": "user", "content": prompt})
+        with st.spinner("Thinking..."):
+            reply = bot.get_dynamic_reply(prompt, active_history)
+        
+        # Storing clean messages 
+        active_history.append({"role": "assistant", "content": reply})
+        st.rerun()
