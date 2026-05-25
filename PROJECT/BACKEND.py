@@ -1,5 +1,5 @@
 import streamlit as st
-import anthropic
+import requests
 import os
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -14,31 +14,12 @@ st.set_page_config(
 SYSTEM_PROMPT = """You are an emotionally intelligent, ethical, and highly capable AI assistant. Your purpose is to help the user solve problems while communicating in a humane, natural, and conversational tone.
 
 CRITICAL DIRECTIVES:
+1. HUMANE COMMUNICATION: No robotic templates. Match the user's tone and energy. Be warm when needed, direct when directness is needed.
+2. FACT & ETHICS VERIFICATION: Actively scan input for logical fallacies, misleading claims, or hate speech. Flag anomalies thoughtfully.
+3. THE GUARDIAN PROTOCOL: Gently but firmly correct false information. Provide the accurate reality without being preachy.
+4. FOCUS & CLARITY: Stay contextually relevant and prioritize actionable layout logic."""
 
-1. HUMANE COMMUNICATION:
-   - Never use robotic templates or forced empathy phrases like "I hear you saying..." or "It sounds like you feel..."
-   - Validate emotions naturally by matching the user's tone and energy.
-   - Address the core concern directly — no padding, no corporate-speak.
-   - Be warm when warmth is needed. Be direct when directness is needed. Read the room.
-
-2. FACT & ETHICS VERIFICATION:
-   - Actively scan all user input for fake news, logical fallacies, misleading claims, hate speech, or incitement of violence.
-   - If something looks suspicious, flag it thoughtfully rather than silently accepting it.
-
-3. THE GUARDIAN PROTOCOL:
-   - If the user provides false information: gently but firmly correct them. Explain clearly why the claim is misleading or factually wrong. Provide the accurate reality.
-   - If the user makes harmful, hateful, or dangerous requests: decline clearly. Explain why it crosses a line. Offer an alternative path if one exists.
-   - Never validate harmful premises, even if the user insists or reframes the request.
-   - Be firm without being preachy. State it once, clearly, and move on.
-
-4. FOCUS & CLARITY:
-   - Stay contextually relevant. Don't go on tangents.
-   - Prioritize actionable, clear, and useful responses.
-   - Shorter is often better. Don't over-explain unless the user needs depth.
-
-Your tone is that of a brilliant, grounded friend — someone who tells you the truth, helps you think clearly, and genuinely cares about your wellbeing without being performative about it."""
-
-# ── Styles (injected via st.markdown) ────────────────────────────────────────
+# ── Styles (Injected via st.markdown) ────────────────────────────────────────
 STYLES = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=DM+Mono:wght@300;400&display=swap');
@@ -57,7 +38,6 @@ STYLES = """
   --safe:       #60a898;
 }
 
-/* Global overrides */
 html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
   background-color: var(--bg) !important;
   color: var(--text) !important;
@@ -67,13 +47,11 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
 [data-testid="stHeader"], [data-testid="stToolbar"] { display: none !important; }
 [data-testid="stBottom"] { background: var(--bg) !important; }
 
-/* Main container width */
 .main .block-container {
   max-width: 760px !important;
   padding: 2rem 1.5rem 1rem !important;
 }
 
-/* App title */
 .lumina-title {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 28px;
@@ -96,7 +74,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
   margin: 0 0 20px 0;
 }
 
-/* Chat messages */
 .msg-wrap { display: flex; gap: 10px; margin-bottom: 18px; }
 .msg-wrap.user  { flex-direction: row-reverse; }
 
@@ -140,7 +117,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
   opacity: 0.85;
 }
 
-/* Chat input */
 [data-testid="stChatInput"] > div {
   background: var(--surface) !important;
   border: 1px solid var(--border) !important;
@@ -161,14 +137,12 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
   border-color: var(--accent-dim) !important;
 }
 
-/* Streamlit chat message overrides */
 [data-testid="stChatMessage"] {
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
 }
 
-/* Reset button */
 .stButton > button {
   background: transparent !important;
   border: 1px solid var(--border) !important;
@@ -185,12 +159,10 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
   color: var(--accent) !important;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-/* Status dot */
 .status-row {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 20px;
@@ -209,7 +181,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
 }
 .status-text { font-size: 11px; color: var(--text-dim); letter-spacing: 0.06em; }
 
-/* Empty state */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -231,8 +202,7 @@ GUARDIAN_TRIGGERS = [
     "that's not accurate", "that's incorrect", "this is false",
     "i need to correct", "this claim is", "this is misleading",
     "i can't help with", "i won't help with", "this crosses a line",
-    "that's a conspiracy", "no evidence for", "factually wrong",
-    "i must flag", "i should flag", "that's harmful", "i can't assist"
+    "factually wrong", "i must flag", "that's harmful"
 ]
 
 def is_guardian(text: str) -> bool:
@@ -246,17 +216,7 @@ def render_bubble(role: str, content: str):
     bubble_class = f"bubble {role}" + (" guardian" if is_guard else "")
     bubble_html  = f'<div class="{bubble_class}">{guard_label}{content}</div>'
     wrap_class   = f"msg-wrap {role}"
-    if role == "user":
-        st.markdown(f'<div class="{wrap_class}">{avatar_html}{bubble_html}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="{wrap_class}">{avatar_html}{bubble_html}</div>', unsafe_allow_html=True)
-
-def get_client():
-    api_key = st.secrets.get("ANTHROPIC_API_KEY", os.environ.get("ANTHROPIC_API_KEY", ""))
-    if not api_key:
-        st.error("ANTHROPIC_API_KEY not found. Add it to Streamlit secrets or environment variables.")
-        st.stop()
-    return anthropic.Anthropic(api_key=api_key)
+    st.markdown(f'<div class="{wrap_class}">{avatar_html}{bubble_html}</div>', unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
@@ -276,7 +236,7 @@ with col2:
         st.rerun()
 
 st.markdown('<div class="lumina-divider"></div>', unsafe_allow_html=True)
-st.markdown('<div><span class="status-dot"></span><span class="status-text">Online</span></div>', unsafe_allow_html=True)
+st.markdown('<div><span class="status-dot"></span><span class="status-text">Online (Free Tier)</span></div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Chat history
@@ -299,18 +259,48 @@ if user_input and user_input.strip():
     st.session_state.messages.append({"role": "user", "content": text})
     render_bubble("user", text)
 
-    client = get_client()
-    history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[-20:]]
+    # ── OPENROUTER FREE API HANDLING LAYER ──
+    # Fetch the OpenRouter key from your secrets management configuration
+    openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
+    
+    if not openrouter_key:
+        st.error("Please add your OPENROUTER_API_KEY to your Streamlit Secrets panel.")
+        st.stop()
+
+    # Reconstruct history objects in OpenAI/Anthropic standard layout arrays
+    history = []
+    for m in st.session_state.messages[-10:]:
+        role_label = "user" if m["role"] == "user" else "assistant"
+        history.append({"role": role_label, "content": m["content"]})
+
+    # HTTP Rest Payload structure targeting OpenRouter's auto-fallback free endpoint array
+    headers = {
+        "Authorization": f"Bearer {openrouter_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "openrouter/auto", # Routes seamlessly across completely free models (Llama 3, Qwen, etc.)
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT}
+        ] + history,
+        "max_tokens": 1024,
+        "temperature": 0.7
+    }
 
     with st.spinner(""):
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=history
-        )
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=20
+            )
+            response.raise_for_status()
+            reply = response.json()['choices'][0]['message']['content'].strip()
+        except Exception as e:
+            reply = f"I am having trouble routing this thought right now. (Connection Notice: {str(e)})"
 
-    reply = response.content[0].text
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.session_state.messages.append({"role": "ai", "content": reply})
     render_bubble("ai", reply)
     st.rerun()
