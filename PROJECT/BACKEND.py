@@ -279,8 +279,10 @@ if user_input and user_input.strip():
         "Content-Type": "application/json"
     }
     
+    # --- LOCATE THIS PAYLOAD BLOCK IN YOUR CODE ---
     payload = {
-        "model": "openrouter/auto", # Routes seamlessly across completely free models (Llama 3, Qwen, etc.)
+        # CHANGE THIS LINE from 'openrouter/auto' to 'openrouter/free'
+        "model": "openrouter/free", 
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT}
         ] + history,
