@@ -1,60 +1,90 @@
-import streamlit as st
+from flask import Flask, request, jsonify, send_from_directory
+import anthropic
 import os
 
-# Configure the page for a clean, centered layout
-st.set_page_config(page_title="Aware AI", page_icon="🌐", layout="centered", initial_sidebar_state="collapsed")
+app = Flask(__name__, static_folder=".")
 
-# Load CSS dynamically
-def load_css(file_name):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    css_path = os.path.join(current_dir, file_name)
-    try:
-        with open(css_path, "r") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.warning(f"Styling file {file_name} not found. Running with default styles.")
+SYSTEM_PROMPT = """You are an emotionally intelligent, ethical, and highly capable AI assistant. Your purpose is to help the user solve problems while communicating in a humane, natural, and conversational tone.
 
-load_css("FRONTEND.css")
+CRITICAL DIRECTIVES:
 
-# App Header
-st.markdown("<h2 style='text-align: center; margin-bottom: 2rem;'>Contextual & Aware AI</h2>", unsafe_allow_html=True)
+1. HUMANE COMMUNICATION:
+   - Never use robotic templates or forced empathy phrases like "I hear you saying..." or "It sounds like you feel..."
+   - Validate emotions naturally by matching the user's tone and energy.
+   - Address the core concern directly — no padding, no corporate-speak.
+   - Be warm when warmth is needed. Be direct when directness is needed. Read the room.
 
-# Initialize Session State
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello. I'm here to help you work through your topics today. What's on your mind?", "flagged": False}
-    ]
+2. FACT & ETHICS VERIFICATION:
+   - Actively scan all user input for fake news, logical fallacies, misleading claims, hate speech, or incitement of violence.
+   - If something looks suspicious, flag it thoughtfully rather than silently accepting it.
 
-# Display Chat History
-for msg in st.session_state.messages:
-    # We use Streamlit's native chat UI for a cleaner look
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-        # If the AI flagged misinformation in its response, display a warning badge
-        if msg.get("flagged"):
-            st.markdown('<div class="guardrail-badge">⚠️ Misinformation / Policy Violation Detected</div>', unsafe_allow_html=True)
+3. THE GUARDIAN PROTOCOL:
+   - If the user provides false information: gently but firmly correct them. Explain clearly why the claim is misleading or factually wrong. Provide the accurate reality.
+   - If the user makes harmful, hateful, or dangerous requests: decline clearly. Explain why it crosses a line. Offer an alternative path if one exists.
+   - Never validate harmful premises, even if the user insists or reframes the request.
+   - Be firm without being preachy. State it once, clearly, and move on.
 
-# The Input Box (Anchored to the bottom natively by Streamlit)
-if prompt := st.chat_input("Message the assistant..."):
-    # 1. Add user prompt to UI
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+4. FOCUS & CLARITY:
+   - Stay contextually relevant. Don't go on tangents.
+   - Prioritize actionable, clear, and useful responses.
+   - Shorter is often better. Don't over-explain unless the user needs depth.
 
-    # 2. Generate AI Response (Placeholder for your actual LLM API call)
-    # You would pass the System Prompt here, evaluate the input, and return the response.
-    
-    # Mock logic: Simulating the AI detecting something harmful/fake
-    is_harmful_or_fake = "fake" in prompt.lower() or "hate" in prompt.lower()
-    
-    if is_harmful_or_fake:
-        mock_response = "I need to clarify that the premise of that statement is factually incorrect. Let's look at the verified data..."
-    else:
-        mock_response = "That makes sense. Let's break down the best way to handle that."
+Your tone is that of a brilliant, grounded friend — someone who tells you the truth, helps you think clearly, and genuinely cares about your wellbeing without being performative about it."""
 
-    # 3. Add AI response to UI
-    st.session_state.messages.append({"role": "assistant", "content": mock_response, "flagged": is_harmful_or_fake})
-    with st.chat_message("assistant"):
-        st.markdown(mock_response)
-        if is_harmful_or_fake:
-            st.markdown('<div class="guardrail-badge">⚠️ Misinformation / Policy Violation Detected</div>', unsafe_allow_html=True)
+client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+conversation_histories = {}
+
+@app.route("/")
+def index():
+    return send_from_directory(".", "FRONTENDHTML.html")
+
+@app.route("/FRONTENDCSS.css")
+def styles():
+    return send_from_directory(".", "FRONTENDCSS.css")
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    session_id = data.get("session_id", "default")
+    user_message = data.get("message", "").strip()
+
+    if not user_message:
+        return jsonify({"error": "Empty message"}), 400
+
+    if session_id not in conversation_histories:
+        conversation_histories[session_id] = []
+
+    conversation_histories[session_id].append({
+        "role": "user",
+        "content": user_message
+    })
+
+    # Keep last 20 messages to avoid token overflow
+    history = conversation_histories[session_id][-20:]
+
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=history
+    )
+
+    assistant_message = response.content[0].text
+
+    conversation_histories[session_id].append({
+        "role": "assistant",
+        "content": assistant_message
+    })
+
+    return jsonify({"reply": assistant_message})
+
+@app.route("/reset", methods=["POST"])
+def reset():
+    data = request.get_json()
+    session_id = data.get("session_id", "default")
+    conversation_histories.pop(session_id, None)
+    return jsonify({"status": "reset"})
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
