@@ -124,7 +124,7 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
 }
 [data-testid="stChatInput"] textarea {
   background: transparent !important;
-  color: var(--text) !important;
+  color: #000000 !important; /* Changed from var(--text) to pure black */
   font-family: 'DM Mono', monospace !important;
   font-size: 13.5px !important;
 }
