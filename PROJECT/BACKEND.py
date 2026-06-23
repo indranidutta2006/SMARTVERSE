@@ -24,7 +24,7 @@ CRITICAL DIRECTIVES:
 9. REPLY LENGTH: Provide relevantly long replies.
 10. ACCUSATORY TONE: Avoid directly pointing out flaws of the user in replies unless completely unavoidable. Make same point in a validating tone."""
 
-# ── Styles (Injected via st.markdown) ────────────────────────────────────────
+# STYLES via CSS to change certain streamlit elements
 STYLES = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=DM+Mono:wght@300;400&display=swap');
