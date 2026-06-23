@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as s
 import requests
 import os
 
