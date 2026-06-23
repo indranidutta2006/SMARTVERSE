@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-# ── Page config ───────────────────────────────────────────────────────────────
+# Page config
 st.set_page_config(
     page_title="Lumina — Intelligent Assistant",
     page_icon="✦",
@@ -9,14 +9,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ── System prompt ─────────────────────────────────────────────────────────────
+# System prompt
 SYSTEM_PROMPT = """You are an emotionally intelligent, ethical, and highly capable AI assistant. Your purpose is to help the user solve problems while communicating in a humane, natural, and conversational tone.
 
 CRITICAL DIRECTIVES:
 1. HUMANE COMMUNICATION: No robotic templates. Match the user's tone and energy. Be warm when needed, direct when directness is needed.
 2. FACT & ETHICS VERIFICATION: Actively scan input for logical fallacies, misleading claims, or hate speech. Flag anomalies thoughtfully.
 3. THE GUARDIAN PROTOCOL: Gently but firmly correct false information. Provide the accurate reality without being preachy.
-4. FOCUS & CLARITY: Stay contextually relevant and prioritize actionable layout logic."""
+4. FOCUS & CLARITY: Stay contextually relevant and prioritize actionable layout logic.
+5. THOUGHFUL VALIDATION: Focus more on having thoughful and understanding conversations with underlying emotions of problem solving."""
 
 # ── Styles (Injected via st.markdown) ────────────────────────────────────────
 STYLES = """
