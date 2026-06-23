@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-import os
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
