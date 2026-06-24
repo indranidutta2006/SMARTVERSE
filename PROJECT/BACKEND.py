@@ -241,7 +241,7 @@ with col2:
         st.rerun()
 
 st.markdown('<div class="lumina-divider"></div>', unsafe_allow_html=True)
-st.markdown('<div><span class="status-dot"></span><span class="status-text">Online (Free Tier)</span></div>', unsafe_allow_html=True)
+st.markdown('<div><span class="status-dot"></span><span class="status-text">Online</span></div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Chat history
@@ -279,9 +279,7 @@ if user_input and user_input.strip():
         "Content-Type": "application/json"
     }
     
-    # --- LOCATE THIS PAYLOAD BLOCK IN YOUR CODE ---
     payload = {
-        # CHANGE THIS LINE from 'openrouter/auto' to 'openrouter/free'
         "model": "openrouter/free", 
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT}
