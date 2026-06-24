@@ -227,7 +227,6 @@ def render_bubble(role: str, content: str):
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Render
 st.markdown(STYLES, unsafe_allow_html=True)
 
 # Header
