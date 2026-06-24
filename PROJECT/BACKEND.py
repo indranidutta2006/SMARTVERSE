@@ -202,7 +202,7 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
 </style>
 """
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# GUARDIAN TRIGGERS
 GUARDIAN_TRIGGERS = [
     "that's not accurate", "that's incorrect", "this is false",
     "i need to correct", "this claim is", "this is misleading",
@@ -223,11 +223,11 @@ def render_bubble(role: str, content: str):
     wrap_class   = f"msg-wrap {role}"
     st.markdown(f'<div class="{wrap_class}">{avatar_html}{bubble_html}</div>', unsafe_allow_html=True)
 
-# ── Session state ─────────────────────────────────────────────────────────────
+#Session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ── Render ────────────────────────────────────────────────────────────────────
+# Render
 st.markdown(STYLES, unsafe_allow_html=True)
 
 # Header
