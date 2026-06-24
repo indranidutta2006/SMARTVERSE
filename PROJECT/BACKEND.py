@@ -264,13 +264,8 @@ if user_input and user_input.strip():
     st.session_state.messages.append({"role": "user", "content": text})
     render_bubble("user", text)
 
-    # ── OPENROUTER FREE API HANDLING LAYER ──
-    # Fetch the OpenRouter key from your secrets management configuration
+    # OPENROUTER FREE API HANDLING LAYER
     openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
-    
-    if not openrouter_key:
-        st.error("Please add your OPENROUTER_API_KEY to your Streamlit Secrets panel.")
-        st.stop()
 
     # Reconstruct history objects in OpenAI/Anthropic standard layout arrays
     history = []
